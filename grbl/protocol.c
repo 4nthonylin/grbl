@@ -291,32 +291,38 @@ void protocol_exec_rt_system()
         // NOTE: Safety door differs from feed holds by stopping everything no matter state, disables powered
         // devices (spindle/coolant), and blocks resuming until switch is re-engaged.
         if (rt_exec & EXEC_SAFETY_DOOR) {
-          report_feedback_message(MESSAGE_SAFETY_DOOR_AJAR);
-          // If jogging, block safety door methods until jog cancel is complete. Just flag that it happened.
-          if (!(sys.suspend & SUSPEND_JOG_CANCEL)) {
-            // Check if the safety re-opened during a restore parking motion only. Ignore if
-            // already retracting, parked or in sleep state.
-            if (sys.state == STATE_SAFETY_DOOR) {
-              if (sys.suspend & SUSPEND_INITIATE_RESTORE) { // Actively restoring
-                #ifdef PARKING_ENABLE
-                  // Set hold and reset appropriate control flags to restart parking sequence.
-                  if (sys.step_control & STEP_CONTROL_EXECUTE_SYS_MOTION) {
-                    st_update_plan_block_parameters(); // Notify stepper module to recompute for hold deceleration.
-                    sys.step_control = (STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_SYS_MOTION);
-                    sys.suspend &= ~(SUSPEND_HOLD_COMPLETE);
-                  } // else NO_MOTION is active.
-                #endif
-                sys.suspend &= ~(SUSPEND_RETRACT_COMPLETE | SUSPEND_INITIATE_RESTORE | SUSPEND_RESTORE_COMPLETE);
-                sys.suspend |= SUSPEND_RESTART_RETRACT;
-              }
-            }
-            if (sys.state != STATE_SLEEP) { sys.state = STATE_SAFETY_DOOR; }
+          if (sys.state == STATE_IDLE)
+          {
+            sys.suspend = SUSPEND_DISABLE; // Break suspend state.
           }
-          // NOTE: This flag doesn't change when the door closes, unlike sys.state. Ensures any parking motions
-          // are executed if the door switch closes and the state returns to HOLD.
-          sys.suspend |= SUSPEND_SAFETY_DOOR_AJAR;
+          else
+          {
+            report_feedback_message(MESSAGE_SAFETY_DOOR_AJAR);
+            // If jogging, block safety door methods until jog cancel is complete. Just flag that it happened.
+            if (!(sys.suspend & SUSPEND_JOG_CANCEL)) {
+              // Check if the safety re-opened during a restore parking motion only. Ignore if
+              // already retracting, parked or in sleep state.
+              if (sys.state == STATE_SAFETY_DOOR) {
+                if (sys.suspend & SUSPEND_INITIATE_RESTORE) { // Actively restoring
+                  #ifdef PARKING_ENABLE
+                    // Set hold and reset appropriate control flags to restart parking sequence.
+                    if (sys.step_control & STEP_CONTROL_EXECUTE_SYS_MOTION) {
+                      st_update_plan_block_parameters(); // Notify stepper module to recompute for hold deceleration.
+                      sys.step_control = (STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_SYS_MOTION);
+                      sys.suspend &= ~(SUSPEND_HOLD_COMPLETE);
+                    } // else NO_MOTION is active.
+                  #endif
+                  sys.suspend &= ~(SUSPEND_RETRACT_COMPLETE | SUSPEND_INITIATE_RESTORE | SUSPEND_RESTORE_COMPLETE);
+                  sys.suspend |= SUSPEND_RESTART_RETRACT;
+                }
+              }
+              if (sys.state != STATE_SLEEP) { sys.state = STATE_SAFETY_DOOR; }
+            }
+            // NOTE: This flag doesn't change when the door closes, unlike sys.state. Ensures any parking motions
+            // are executed if the door switch closes and the state returns to HOLD.
+            sys.suspend |= SUSPEND_SAFETY_DOOR_AJAR;
+          }
         }
-        
       }
 
       if (rt_exec & EXEC_SLEEP) {
