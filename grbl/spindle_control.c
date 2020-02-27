@@ -57,36 +57,6 @@ void spindle_init()
 uint8_t spindle_get_state()
 {
   #ifdef VARIABLE_SPINDLE
-    #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
-      // No spindle direction output pin. 
-      #ifdef INVERT_SPINDLE_ENABLE_PIN
-        if (bit_isfalse(SPINDLE_ENABLE_PORT,(1<<SPINDLE_ENABLE_BIT))) { return(SPINDLE_STATE_CW); }
-      #else
-        if (bit_istrue(SPINDLE_ENABLE_PORT,(1<<SPINDLE_ENABLE_BIT))) { return(SPINDLE_STATE_CW); }
-      #endif
-    #else
-      if (SPINDLE_TCCRA_REGISTER & (1<<SPINDLE_COMB_BIT)) { // Check if PWM is enabled.
-        #ifdef ENABLE_DUAL_AXIS
-          return(SPINDLE_STATE_CW);
-        #else
-          if (SPINDLE_DIRECTION_PORT & (1<<SPINDLE_DIRECTION_BIT)) { return(SPINDLE_STATE_CCW); }
-          else { return(SPINDLE_STATE_CW); }
-        #endif
-      }
-    #endif
-  #else
-    #ifdef INVERT_SPINDLE_ENABLE_PIN
-      if (bit_isfalse(SPINDLE_ENABLE_PORT,(1<<SPINDLE_ENABLE_BIT))) { 
-    #else
-      if (bit_istrue(SPINDLE_ENABLE_PORT,(1<<SPINDLE_ENABLE_BIT))) {
-    #endif
-      #ifdef ENABLE_DUAL_AXIS    
-        return(SPINDLE_STATE_CW);
-      #else
-        if (SPINDLE_DIRECTION_PORT & (1<<SPINDLE_DIRECTION_BIT)) { return(SPINDLE_STATE_CCW); }
-        else { return(SPINDLE_STATE_CW); }
-      #endif
-    }
     #ifdef SPINDLE_IS_ESC
       if (SPINDLE_OCR_REGISTER > SPINDLE_PWM_MIN_VALUE) { return(SPINDLE_STATE_CW); }
       else { return(SPINDLE_STATE_DISABLE); }
@@ -100,8 +70,12 @@ uint8_t spindle_get_state()
         #endif
       #else
         if (SPINDLE_TCCRA_REGISTER & (1<<SPINDLE_COMB_BIT)) { // Check if PWM is enabled.
-          if (SPINDLE_DIRECTION_PORT & (1<<SPINDLE_DIRECTION_BIT)) { return(SPINDLE_STATE_CCW); }
-          else { return(SPINDLE_STATE_CW); }
+          #ifdef ENABLE_DUAL_AXIS
+            return(SPINDLE_STATE_CW);
+          #else
+            if (SPINDLE_DIRECTION_PORT & (1<<SPINDLE_DIRECTION_BIT)) { return(SPINDLE_STATE_CCW); }
+            else { return(SPINDLE_STATE_CW); }
+          #endif
         }
       #endif
     #endif
@@ -111,8 +85,12 @@ uint8_t spindle_get_state()
     #else
       if (bit_istrue(SPINDLE_ENABLE_PORT,(1<<SPINDLE_ENABLE_BIT))) {
     #endif
+        #ifdef ENABLE_DUAL_AXIS    
+        return(SPINDLE_STATE_CW);
+      #else
         if (SPINDLE_DIRECTION_PORT & (1<<SPINDLE_DIRECTION_BIT)) { return(SPINDLE_STATE_CCW); }
         else { return(SPINDLE_STATE_CW); }
+      #endif
       }
   #endif
   return(SPINDLE_STATE_DISABLE);
